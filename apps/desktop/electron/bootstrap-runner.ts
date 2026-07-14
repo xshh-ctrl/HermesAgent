@@ -107,6 +107,21 @@ function installedAgentInstallScript(hermesHome) {
   }
 }
 
+function bundledInstallScript() {
+  if (!process.resourcesPath) {
+    return null
+  }
+  const candidate = path.join(process.resourcesPath, installScriptName())
+
+  try {
+    fs.accessSync(candidate, fs.constants.R_OK)
+
+    return candidate
+  } catch {
+    return null
+  }
+}
+
 function cachedScriptPath(hermesHome, commit) {
   return path.join(bootstrapCacheDir(hermesHome), `install-${commit}.${process.platform === 'win32' ? 'ps1' : 'sh'}`)
 }
@@ -250,9 +265,29 @@ async function resolveInstallScript({
   } catch (err) {
     // The pinned commit may not be fetchable from GitHub -- most commonly a
     // locally-built desktop app stamped to an unpushed HEAD (see
-    // write-build-stamp.mjs fromLocalGit). Fall back to the installer that
-    // ships inside the already-installed agent checkout so dev/self-builds can
-    // still bootstrap instead of dying with a fatal 404.
+    // write-build-stamp.mjs fromLocalGit). Fall back to the bundled installer
+    // first, then the installed agent checkout so dev/self-builds can still
+    // bootstrap instead of dying with a fatal 404.
+    const bundled = bundledInstallScript()
+
+    if (bundled) {
+      emit({
+        type: 'log',
+        line:
+          `[bootstrap] GitHub fetch failed (${err.message}); ` +
+          `falling back to bundled ${installScriptName()} at ${bundled}`
+      })
+
+      try {
+        fs.mkdirSync(path.dirname(cached), { recursive: true })
+        fs.copyFileSync(bundled, cached)
+
+        return { path: cached, source: 'bundled', commit: installStamp.commit, kind: installScriptKind() }
+      } catch {
+        return { path: bundled, source: 'bundled', commit: installStamp.commit, kind: installScriptKind() }
+      }
+    }
+
     const installed = installedAgentInstallScript(hermesHome)
 
     if (installed) {
@@ -269,7 +304,6 @@ async function resolveInstallScript({
 
         return { path: cached, source: 'installed-agent', commit: installStamp.commit, kind: installScriptKind() }
       } catch {
-        // Cache copy failed (read-only FS, etc.) -- use the source path directly.
         return { path: installed, source: 'installed-agent', commit: installStamp.commit, kind: installScriptKind() }
       }
     }

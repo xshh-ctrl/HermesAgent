@@ -30,6 +30,7 @@
     "dist:win": "npm run build && npm run builder -- --win",
     "dist:win:msi": "npm run build && npm run builder -- --win msi",
     "dist:win:nsis": "npm run build && npm run builder -- --win nsis",
+    "dist:win:portable": "npm run build && npm run builder -- --win portable",
     "dist:linux": "npm run build && npm run builder -- --linux AppImage deb rpm",
     "test:desktop": "node scripts/test-desktop.mjs",
     "test:desktop:all": "node scripts/test-desktop.mjs all",
@@ -184,6 +185,14 @@
       {
         "from": "assets/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "../../scripts/install.ps1",
+        "to": "install.ps1"
+      },
+      {
+        "from": "../../scripts/install.sh",
+        "to": "install.sh"
       }
     ],
     "asar": true,
@@ -237,7 +246,8 @@
       "legalTrademarks": "Hermes",
       "target": [
         "nsis",
-        "msi"
+        "msi",
+        "portable"
       ],
       "signAndEditExecutable": false
     },
