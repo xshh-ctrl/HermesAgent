@@ -1,4 +1,6 @@
 .DS_Store
+.cache/
+.npmrc.txt
 /venv/
 /venv.old/
 /_pycache/
